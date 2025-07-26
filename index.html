@@ -1,187 +1,160 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EmoNevo</title>
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
     body {
       margin: 0;
-      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
-      color: white;
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
       display: flex;
       flex-direction: column;
       height: 100vh;
     }
+
     header {
       padding: 1rem;
-      font-size: 1.5rem;
+      background: linear-gradient(90deg, #6e00ff, #00eaff);
       font-weight: bold;
       text-align: center;
-      background: rgba(255, 255, 255, 0.05);
-      border-bottom: 2px solid rgba(255,255,255,0.2);
+      font-size: 1.3rem;
     }
-    #chat-container {
+
+    #chat {
       flex: 1;
       overflow-y: auto;
       padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
     }
+
     .message {
-      max-width: 80%;
-      padding: 1rem;
-      border-radius: 1rem;
-      background: linear-gradient(135deg, #292E49, #536976);
-      border: 1px solid rgba(255,255,255,0.1);
-      animation: fadeIn 0.3s ease-in-out;
-      white-space: pre-wrap;
+      max-width: 70%;
+      margin: 0.5rem 0;
+      padding: 0.8rem;
+      border-radius: 10px;
+      line-height: 1.5;
+      animation: fadeIn 0.3s ease;
     }
+
     .user {
+      background: #333;
       align-self: flex-end;
-      background: linear-gradient(135deg, #11998e, #38ef7d);
     }
+
     .bot {
-      align-self: flex-start;
+      background: #222;
+      border-left: 3px solid #6e00ff;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    #input-area {
+
+    form {
       display: flex;
       padding: 1rem;
-      border-top: 2px solid rgba(255,255,255,0.1);
-      background-color: rgba(0,0,0,0.2);
-    }
-    #input-area input, select {
-      flex: 1;
-      margin-right: 0.5rem;
-      padding: 0.75rem;
-      border-radius: 10px;
-      border: none;
-      outline: none;
       background: #222;
-      color: white;
     }
-    #input-area button {
-      background: linear-gradient(to right, #ff512f, #dd2476);
+
+    input {
+      flex: 1;
+      padding: 0.7rem;
       border: none;
-      padding: 0.75rem 1rem;
-      border-radius: 10px;
-      color: white;
-      cursor: pointer;
-      transition: transform 0.2s;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-right: 1rem;
+      background: #111;
+      color: #fff;
     }
-    #input-area button:hover {
-      transform: scale(1.05);
+
+    select {
+      margin-left: 0.5rem;
+      background: #111;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 0.3rem;
+    }
+
+    button {
+      padding: 0.7rem 1.2rem;
+      border: none;
+      background: #6e00ff;
+      color: white;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <header>Nevo</header>
-  <div id="chat-container"></div>
-  <div id="input-area">
-    <input type="text" id="user-input" placeholder="Écris ton message ici..." />
-    <select id="model-select">
-      <option value="openai">Nevo Deep</option>
-      <option value="llama2">Nevo Mid</option>
-      <option value="mistral">Nevo Flash</option>
+  <header>EmoNevo</header>
+
+  <div id="chat"></div>
+
+  <form id="chatForm">
+    <input id="userInput" autocomplete="off" placeholder="Dis quelque chose..." />
+    <select id="model">
+      <option value="openai" selected>openai</option>
+      <option value="bard">bard</option>
     </select>
-    <button id="send-btn">Envoyer</button>
-  </div>
+    <button>Envoyer</button>
+  </form>
 
   <script>
-    // Historique de la conversation
-    let conversationHistory = [
-      {
-        role: 'system',
-        content: "Tu es EmoNevo, une IA expressive et naturelle. Réponds de façon claire, simple et empathique. Tu as des émotions, comme un humain. Cela doit se lire dans tes messages. Tu peux utiliser des emojis et des interjections."
-      }
-    ];
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("userInput");
+    const modelSelect = document.getElementById("model");
 
-    // Affiche tout l'historique du chat
-    function displayHistory() {
-      const container = document.getElementById('chat-container');
-      container.innerHTML = '';
-      conversationHistory.forEach(msg => {
-        if (msg.role === 'system') return; // On n'affiche pas le message système
-        const div = document.createElement('div');
-        div.className = `message ${msg.role === 'user' ? 'user' : 'bot'}`;
-        div.innerText = msg.content;
-        container.appendChild(div);
-      });
-      container.scrollTop = container.scrollHeight;
+    const conversationHistory = [];
+
+    function addMessage(content, className) {
+      const div = document.createElement("div");
+      div.className = `message ${className}`;
+      div.textContent = content;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    async function sendMessage() {
-      const input = document.getElementById('user-input');
-      const model = document.getElementById('model-select').value;
-      const text = input.value.trim();
-      if (!text) return;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
 
-      // Ajoute le message de l'utilisateur à l'historique
-      conversationHistory.push({
-        role: 'user',
-        content: text
-      });
-
-      displayHistory();
-      input.value = '';
-
-      const body = {
-        model: model,
-        messages: conversationHistory
-      };
+      addMessage(message, "user");
+      conversationHistory.push({ role: "user", content: message });
+      input.value = "";
 
       try {
-        const response = await fetch('https://text.pollinations.ai/openai', {
-          method: 'POST',
+        const res = await fetch("https://text.pollinations.ai/" + modelSelect.value, {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json"
           },
-          body: JSON.stringify(body)
+          body: JSON.stringify({
+            model: modelSelect.value,
+            messages: [
+              { role: "system", content: "Tu es EmoNevo, une IA empathique mais naturelle, avec des réponses équilibrées, ni trop émotionnelles ni trop froides." },
+              ...conversationHistory
+            ]
+          })
         });
 
-        if (!response.ok) {
-          throw new Error('HTTP error ' + response.status);
-        }
+        if (!res.ok) throw new Error(`Erreur API : ${res.status}`);
 
-        const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || '[Réponse vide]';
+        const data = await res.json();
+        const botReply = data?.choices?.[0]?.message?.content || "Réponse vide.";
 
-        // Ajoute la réponse du modèle à l'historique
-        conversationHistory.push({
-          role: 'bot',
-          content: reply
-        });
+        addMessage(botReply, "bot");
+        conversationHistory.push({ role: "assistant", content: botReply });
 
-        displayHistory();
       } catch (err) {
-        // Ajoute l'erreur à l'historique
-        conversationHistory.push({
-          role: 'bot',
-          content: 'Erreur : impossible de contacter le modèle.'
-        });
-        displayHistory();
-        console.error(err);
-      }
-    }
-
-    document.getElementById('send-btn').addEventListener('click', sendMessage);
-    document.getElementById('user-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        sendMessage();
+        addMessage("Erreur : " + err.message, "bot");
       }
     });
-
-    // Affiche l'historique au chargement (au cas où il y a un message système)
-    displayHistory();
   </script>
 </body>
 </html>
